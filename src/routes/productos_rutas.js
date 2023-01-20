@@ -1,26 +1,27 @@
-const express = require("express");
-const productManager = require("../managers/productManager.js");
+import { Router } from "express";
+import ProductManager from "../managers/ProductManager.js";
 
-const router = express.Router();
+const router = Router();
+const productList = new ProductManager('./src/productos.json')
 
 router.get('/', (req,res) => {
-    res.status(200).send(productManager.getProducts())
-});
+    res.status(200).send(productList.getProducts())
+})
 
 router.get('/:pid', (req,res) => {
     const { pid } = req.params;
 
-    const result = productManager.getProductById(pid);
+    const result = productList.getProductByID(pid);
 
     if( result.id ){
         res.status(200).send(result)
     }else{
         res.status(400).send(result)
     }
-});
+})
 
 router.post('/', (req,res) => {
-    const {title, description, code, price, stock, thumbnail} = req.body;
+    const {title, description, code, price, status,  stock, category, thumbnails} = req.body;
 
     if(!title){
         throw new Error('Title is required.')
@@ -38,23 +39,40 @@ router.post('/', (req,res) => {
         throw new Error('Price is required.')
     }
 
+    if(!status){
+        throw new Error('Status is required.')
+    }
+
     if(!stock){
         throw new Error('Stock is required.')
     }
 
-    if(!thumbnail){
-        throw new Error('Thumbnail is required.')
+    if(!category){
+        throw new Error('Category is required.')
     }
 
-    productManager.addProduct(title, description, price, thumbnail, code, stock);
-    res.status(200).send({message: "Product added succesfully"})
-});
+    const product = {title, description, code, price, status, stock, category, thumbnails}
+    const result = productList.addProduct(product);
+    res.status(200).send(result)
+})
 
 router.put('/:pid', (req,res) => {
     const {pid} = req.params;
-    const {title, description, code, price, stock, thumbnail} = req.body;
+    const {title, description, code, price, status,  stock, category, thumbnails} = req.body;
 
-    const result = productManager.updateProduct(pid, {title, description, code, price, stock, thumbnail});
+    const result = productList.updateProduct(pid, {title, description, code, price, status,  stock, category, thumbnails});
+
+    if(result.err){
+        res.status(400).send(result)
+    }else{
+        res.status(200).send(result)
+    }
+})
+
+router.delete('/:pid', (req, res) => {
+    const { pid } = req.params;
+
+    const result = productList.deleteProduct(pid);
 
     if(result.err){
         res.status(400).send(result)
@@ -64,4 +82,4 @@ router.put('/:pid', (req,res) => {
     
 })
 
-module.exports = router;
+export default router;

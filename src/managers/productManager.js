@@ -1,127 +1,148 @@
-const fs = require("fs");
+import fs from 'fs';
 
-function requiredParameter(parameterName) {
-    throw new Error(`El Parametro ${parameterName} no fue ingresado`);
-}
-
-class ProductManager {
-    constructor(path) {
-    this.fileName = "../productos.json";
-    this.path = path;
-    this.products = [];
-    this.idProductoCreado = 0;
+class ProductManager{
+    constructor(path){
+        this.path = path;
     }
 
-    getProducts() {
-    try {
-        const data = JSON.parse(fs.readFileSync(`${this.path + this.fileName}`));
+    addProduct({title, description,  code, price, status = true,  stock, category, thumbnails=[]}){
+        const productList = this.getData();
+
+        // Verificar que el codigo no exista en la lista
+        if(productList.length != 0){
+            let verifyCode = productList.find(product => product.code == code);
+            if(verifyCode){
+                return 'The code already exists in the product list.';
+            }
+        }
+
+        let product = {
+            id: productList.length == 0 ? 1 : productList[productList.length-1].id + 1,
+            title, 
+            description, 
+            code, 
+            price, 
+            status: true, 
+            stock, 
+            category, 
+            thumbnails
+        }
+
+        productList.push(product);
+        fs.writeFileSync(this.path,JSON.stringify(productList, null, 2))
+        return product;
+    }
+
+    getProducts(){
+        return this.getData();
+    }
+
+    getProductByID(id_prod){
+        let productList = this.getData();
+
+        let searchProduct = productList.find(product => product.id == id_prod);
+        if(searchProduct){
+            return searchProduct;
+        }else{
+            return {err: 'A product with that ID does not exist in the list'}
+        }
+    }
+
+    updateProduct(id_prod, {title, description, code, price, status, stock, category, thumbnails}){
+        // Actualiza un producto
+        let productList = this.getData();
+
+        let index = productList.findIndex(product => product.id == id_prod);
+
+        if(index >= 0){
+            let product = productList[index];
+
+            if(product.title != title && title ){
+                productList[index].title = title;
+            }
+            if(product.description != description && description){
+                productList[index].description = description;
+            }
+
+            if(product.code != code && code){
+                productList[index].code = code;
+            }
+
+            if(product.price != price && price){
+                productList[index].price = price;
+            }
+
+            if(product.status != status && status){
+                productList[index].status = status;
+            }
+
+            if(product.stock != stock && stock){
+                productList[index].stock = stock;
+            }
+
+            if(product.category != category && category){
+                productList[index].category = category;
+            }
+
+            if(product.thumbnails != thumbnails && thumbnails){
+                productList[index].thumbnails = thumbnails;
+            }
+
+            fs.writeFileSync(this.path,JSON.stringify(productList, null, 2));
+            return productList[index];
+        }else{
+            return {err: 'The product is not in the list.'}
+        }
+    }
+
+    deleteProduct(id_prod){
+        let productList = this.getData();
+
+        let indexProduct = productList.findIndex(product => product.id == id_prod)
+
+        if(indexProduct >= 0){
+            productList.splice(indexProduct,1)
+            fs.writeFileSync(this.path,JSON.stringify(productList, null, 2))
+            return {message: 'The product was successfully deleted.'}
+        }else{
+            return {err: 'The product is not in the list.'}
+        }
+    }
+    
+    getData(){
+        // Extrae data del archivo. Si no existe aun, devuelve un array vacio.
+        let data = []
+        try{
+            const carts = JSON.parse(fs.readFileSync(this.path, 'utf-8'))
+            carts.forEach(element => {
+                data.push(element)
+            });
+
+        }catch{
+            console.log('The file was empty or did not exist.')
+        }
         return data;
-    } catch (error) {
-        console.log(
-        `No se encontró un archivo con el nombre ${this.fileName} en la ruta ${this.path}`
-        );
-        return [];
-    }
     }
 
-    writeProducts(productsToPost) {
-    fs.writeFileSync(
-        `${this.path + this.fileName}`,
-        JSON.stringify(productsToPost)
-    );
-    }
-
-    incrementId() {
-    this.idProductoCreado++;
-    }
-
-    addProduct(
-    title = requiredParameter("title"),
-    description = requiredParameter("description"),
-    price = requiredParameter("price"),
-    thumbnail = requiredParameter("thumbnail"),
-    code = requiredParameter("code"),
-    stock = requiredParameter("stock")
-    ) {
-    //Retornar todos los productos
-    const products = this.getProducts();
-
-    //Validar que el code no se repita
-    const codigoRepetido = products.some((product) => product.code == code);
-    if (codigoRepetido) {
-        console.log("Code already exists");
-        return;
-    }
-
-    //Se crea el objeto productos
-    const product = {
-        id: this.idProductoCreado,
-        title,
-        description,
-        price,
-        thumbnail,
-        code,
-        stock,
-    };
-
-    //Se agrega el producto al json
-    products.push(product);
-    this.writeProducts(products);
-
-    //Se incrementa el id en 1
-    this.incrementId();
-    }
-
-    getProductById(id) {
-    const products = this.getProducts();
-    const foundProduct = products.find((product) => product.id == id);
-
-    if (foundProduct == undefined) {
-        console.log("Id to get not found");
-    } else {
-        return foundProduct;
-    }
-    }
-
-    updateProduct(id, dataToUpdate) {
-    const products = this.getProducts();
-    const foundProductIndex = products.findIndex((product) => product.id == id);
-
-    //Si no se encuentra el id, no se actulizará el producto
-    if (foundProductIndex == -1) {
-        console.log("Id to update not found");
-        return;
-    }
-
-    //Si se encuentra el Id, se procederá a actualizarlo
-    products[foundProductIndex] = {
-        ...products[foundProductIndex],
-        ...dataToUpdate,
-    };
-    this.writeProducts(products);
-    return products[foundProductIndex];
-    }
-
-    deleteProduct(id) {
-    const products = this.getProducts();
-    const foundProductIndex = products.findIndex((product) => product.id == id);
-
-    //Si no se encuentra el id, no se actulizará el producto
-    if (foundProductIndex == -1) {
-        console.log("Id to delete not found");
-        return;
-    }
-
-    //Si se encuentra el Id, se procederá a borrarlo
-    const productToDelete = products.splice(foundProductIndex, 1);
-    this.writeProducts(products);
-    return productToDelete;
-    }
 }
 
-// -------------------- Se instancia el product manager para probar funcionalidad --------------------
-const productManager = new ProductManager("./");
+export default ProductManager;
 
-module.exports = {
-    productManager
-};
+// * ---------- Testing ---------- *
+/*const testProd = {
+    title: "producto prueba",
+    description: "Este es un producto prueba",
+    price:200,
+    thumbnail:"Sin imagen",
+    code: "abc123",
+    stock:25
+}
+const instancia = new ProductManager('./productList.json');
+console.log(instancia.getProducts())
+instancia.addProduct(testProd)
+console.log(instancia.getProducts())
+console.log(instancia.addProduct(testProd))
+console.log(instancia.getProductByID(1))
+console.log(instancia.updateProduct(1, {price: 300}))
+console.log(instancia.deleteProduct(2))
+*/
